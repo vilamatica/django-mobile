@@ -94,18 +94,18 @@ class TemplateLoaderTests(BaseTestCase):
     def test_load_template_on_filesystem(self):
         from django.template.loaders import app_directories, filesystem
 
-        @patch.object(app_directories.Loader, 'load_template')
-        @patch.object(filesystem.Loader, 'load_template')
+        @patch.object(app_directories.Loader, 'get_template_sources')
+        @patch.object(filesystem.Loader, 'get_template_sources')
         def testing(filesystem_loader, app_directories_loader):
-            filesystem_loader.side_effect = TemplateDoesNotExist('error')
-            app_directories_loader.side_effect = TemplateDoesNotExist('error')
+            filesystem_loader.return_value = []
+            app_directories_loader.return_value = []
 
             from django_mobile.loader import Loader
             loader = Loader(get_engine())
 
             set_flavour('mobile')
             try:
-                loader.load_template('base.html', template_dirs=None)
+                loader.get_template('base.html')
             except TemplateDoesNotExist:
                 pass
             self.assertEqual(filesystem_loader.call_args[0][0], 'mobile/base.html')
@@ -113,37 +113,7 @@ class TemplateLoaderTests(BaseTestCase):
 
             set_flavour('full')
             try:
-                loader.load_template('base.html', template_dirs=None)
-            except TemplateDoesNotExist:
-                pass
-            self.assertEqual(filesystem_loader.call_args[0][0], 'full/base.html')
-            self.assertEqual(app_directories_loader.call_args[0][0], 'full/base.html')
-
-        testing()
-
-    def test_load_template_source_on_filesystem(self):
-        from django.template.loaders import app_directories, filesystem
-
-        @patch.object(app_directories.Loader, 'load_template_source')
-        @patch.object(filesystem.Loader, 'load_template_source')
-        def testing(filesystem_loader, app_directories_loader):
-            filesystem_loader.side_effect = TemplateDoesNotExist('error')
-            app_directories_loader.side_effect = TemplateDoesNotExist('error')
-
-            from django_mobile.loader import Loader
-            loader = Loader(get_engine())
-
-            set_flavour('mobile')
-            try:
-                loader.load_template_source('base.html', template_dirs=None)
-            except TemplateDoesNotExist:
-                pass
-            self.assertEqual(filesystem_loader.call_args[0][0], 'mobile/base.html')
-            self.assertEqual(app_directories_loader.call_args[0][0], 'mobile/base.html')
-
-            set_flavour('full')
-            try:
-                loader.load_template_source('base.html', template_dirs=None)
+                loader.get_template('base.html')
             except TemplateDoesNotExist:
                 pass
             self.assertEqual(filesystem_loader.call_args[0][0], 'full/base.html')
@@ -158,7 +128,9 @@ class TemplateLoaderTests(BaseTestCase):
         result = result.strip()
         self.assertEqual(result, 'Hello .')
         # simulate RequestContext
-        result = render_to_string('index.html', context_instance=RequestContext(Mock()))
+        result = render_to_string(
+            'index.html', {'flavour': get_flavour(Mock())}
+        )
         result = result.strip()
         self.assertEqual(result, 'Hello full.')
         set_flavour('mobile')
